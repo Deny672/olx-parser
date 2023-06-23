@@ -73,7 +73,7 @@ def get_offer(item):
 def check_database(item):
     ID_advert = item["id"]
     price = item["params"][0]["value"]["value"]
-    connection = sqlite3.connect('/olx.db')
+    connection = sqlite3.connect('olx.db')
     cursor = connection.cursor()
     cursor.execute("""
         SELECT ID_advert, price FROM offers WHERE ID_advert = (?)
