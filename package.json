@@ -4,7 +4,7 @@
   "license": "MIT",
   "description": "My project description",
   "scripts": {
-    "start": "some command to be run", // you need to add this line
+    "start": "yarn start",
     "test": "(eslint lib || true) && jest"
   }
   "dependencies": {"requests": "^2.28.1", "pyTelegramBotAPI": "^4.12.0"}  
