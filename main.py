@@ -1,6 +1,7 @@
 import requests
 #from background import keep_alive
 from time import sleep
+import openpyxl
 import pandas as pd
 import telebot
 import os
