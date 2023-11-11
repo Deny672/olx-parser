@@ -1,8 +1,7 @@
 import requests
 #from background import keep_alive
 from time import sleep
-import openpyxl
-import pandas as pd
+import json
 import telebot
 import os
 
@@ -38,13 +37,13 @@ def get_json():
         params = {
             'offset': f'{count}',
             'limit': '40',
-            'category_id': '458',
+            'category_id': '78',
             'currency': 'UAH',
-            'sort_by': 'created_at:desc',
-            'filter_enum_subcategory[0]': 'videokarty',
-            'filter_float_price:to': '3001',
+            'filter_float_price:to': '5501',
             'filter_refiners': 'spell_checker',
+            'facets': '[{"field":"region","fetchLabel":true,"fetchUrl":true,"limit":30}]',
         }
+
         response = requests.get('https://www.olx.ua/api/v1/offers/',
                                 params=params,
                                 headers=headers)
@@ -58,7 +57,7 @@ def get_json():
 
 
 def get_offer(item):
-    pass
+    # pass
     offer = {}
 
     offer["url"] = item["url"]
@@ -81,66 +80,51 @@ def get_offer(item):
 
 
 def check_database(item):
-    filename = "database.xlsx"
-    if os.path.isfile(filename):
-        book = pd.read_excel(filename)
-    else:
-        book = pd.DataFrame(columns=[
-            'Ид обьявления', 'Ссылка', 'Заголовок', 'Описание', 'Цена',
-            'Прошлая цена', 'Последнее время изменения', 'Время создания',
-            'Город', 'Область'
-        ])
-
     offer = get_offer(item)
 
-    def find_offer_id(offer):
-        df = book[book['Ид обьявления'] == str(offer["ID_advert"])]
-        if not df.empty:
-            return df.index[0]
-        return None
+    file_name = "database.json"
 
-    coordinates = find_offer_id(offer)
+    with open(file_name, 'r') as file:
+        database = json.load(file)
 
-    if coordinates is not None:
-        if str(offer["price"]) != book.at[coordinates, 'Цена']:
-            book.at[coordinates, 'Заголовок'] = offer['title']
-            book.at[coordinates, 'Описание'] = offer["description"]
-            book.at[coordinates, 'Цена'] = str(offer["price"])
-            book.at[coordinates, 'Прошлая цена'] = offer["previous_price"]
-            book.at[coordinates, 'Последнее время изменения'] = offer["last_refresh_time"]
-            book.at[coordinates, 'Время создания'] = offer["created_time"]
-            book.at[coordinates, 'Город'] = offer["city"]
-            book.at[coordinates, 'Область'] = offer["region"]
-            book.to_excel(filename, index=False)
-            # telegram_message(offer)
-            print('Обновил')
-    else:
-        book = book._append({
-            'Ид обьявления': offer['ID_advert'],
-            'Ссылка': offer['url'],
-            'Заголовок': offer['title'],
-            'Описание': offer["description"],
-            'Цена': offer["price"],
-            'Прошлая цена': offer["previous_price"],
-            'Последнее время изменения': offer["last_refresh_time"],
-            'Время создания': offer["created_time"],
-            'Город': offer["city"],
-            'Область': offer["region"]
-        }, ignore_index=True)
-        book.to_excel(filename, index=False)
-        print('Записал')
+    # database.append(offer)
+    track = None
+    for i in range(len(database)):
+        if offer["ID_advert"] == database[i]["ID_advert"] and offer["price"] == database[i]["price"]:
+            track = True
+            # print('Такое есть')
+            break
+        elif offer["ID_advert"] == database[i]["ID_advert"] and offer["price"] != database[i]["price"]:
+            database[i] = offer
+            track = False
+            print('Не та цена')
+            break
+    if track == False:
+        # telegram_message(offer)
+        with open('database.json', 'w') as file:
+            json.dump(database, file, indent=4)
+    elif track == None:
+        print('Новинка')
+        # telegram_message(offer)
+        database.append(offer)
+        with open('database.json', 'w') as file:
+            json.dump(database, file, indent=4)
+
+
+
+
 
 
 def telegram_message(offer):
     sleep(3)
-    chat_id = '-1001696601088'
+    print('Отправил')
+    chat_id = '-1002118087052'
     message_text = f'О ЧЕТА НОВОЕ : \n Заголовок : \n {offer["title"]} \n Описание : \n {offer["description"]} \n Цена : \n {offer["price"]} \n Предыдущая цена \n {offer["previous_price"]} \n Последнее время изменения \n {offer["last_refresh_time"]} \n Время создания : \n {offer["created_time"]} \n Город : \n {offer["city"]} \n Область : \n {offer["region"]} \n Ссылка : \n{offer["url"]}'
     bot.send_message(chat_id=chat_id, text=message_text)
 
 
 def get_offers(data):
     offers = []
-
     for item in data["data"]:
         check_database(item)
         # break
@@ -156,15 +140,12 @@ def main():
 
 
 if __name__ == '__main__':
-    filename = "database.xlsx"
+    filename = "database.json"
     if os.path.isfile(filename):
         print('YES YES')
         main()
     else:
-        book = pd.DataFrame(columns=[
-            'Ид обьявления', 'Ссылка', 'Заголовок', 'Описание', 'Цена',
-            'Прошлая цена', 'Последнее время изменения', 'Время создания',
-            'Город', 'Область'
-        ])
-        book.to_excel(filename, index=False)
+        database = []
+        with open("database.json", "w") as json_file:
+            json.dump(database, json_file)
         main()
